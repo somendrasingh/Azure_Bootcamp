@@ -1,0 +1,152 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory Name"
+		},
+		"AzureBlobStoragePatientFileSchemaTest": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SchemaValidationPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "InputSchemaMetadata",
+						"type": "GetMetadata",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "AzureBlobFileSchema",
+								"type": "DatasetReference"
+							}
+						}
+					},
+					{
+						"name": "PredefinedSchema",
+						"type": "GetMetadata",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "AzureBlobFileSchema",
+								"type": "DatasetReference"
+							}
+						}
+					},
+					{
+						"name": "ValidateSchema",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "InputSchemaMetadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "PredefinedSchema",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(activity('InputSchemaMetadata').output.structure[0].name,activity('PredefinedSchema').output.structure[0].name)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Set Variable1",
+									"type": "SetVariable",
+									"typeProperties": {
+										"variableName": "CheckNameVar",
+										"value": true
+									}
+								}
+							]
+						}
+					}
+				],
+				"variables": {
+					"CheckNameVar": {
+						"type": "Boolean",
+						"defaultValue": false
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureBlobFileSchema')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobFileSchema')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStoragePatientFileSchemaTest')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "patientID",
+						"type": "String"
+					},
+					{
+						"name": "patientName",
+						"type": "String"
+					},
+					{
+						"name": "patientAdmissionDate",
+						"type": "String"
+					},
+					{
+						"name": "patientLocation",
+						"type": "String"
+					},
+					{
+						"name": "patientDummyColumn",
+						"type": "String"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "TextFormat",
+						"columnDelimiter": ",",
+						"quoteChar": "\"",
+						"nullValue": "\\N",
+						"encodingName": null,
+						"treatEmptyAsNull": true,
+						"skipLineCount": 0,
+						"firstRowAsHeader": true
+					},
+					"fileName": "SchemaTestFile.txt",
+					"folderPath": "patienttestfile"
+				}
+			}
+		}
+	]
+}
