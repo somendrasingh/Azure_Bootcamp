@@ -5,12 +5,11 @@
 			"referenceName": "Blobs",
 			"type": "LinkedServiceReference"
 		},
+		"annotations": [],
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
-				"type": "AzureBlobStorageLocation",
-				"fileName": "b*f*.txt",
-				"container": "blob1"
+				"type": "AzureBlobStorageLocation"
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",
