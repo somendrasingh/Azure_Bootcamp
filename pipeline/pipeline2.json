@@ -19,7 +19,43 @@
 						"value": "@activity('Get Metadata1').output.childitems",
 						"type": "Expression"
 					},
+					"isSequential": true,
 					"activities": [
+						{
+							"name": "Get Metadata2",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "DelimitedText1",
+									"type": "DatasetReference",
+									"parameters": {
+										"ContainerName": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								},
+								"fieldList": [
+									"childItems"
+								],
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSetting",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSetting"
+								}
+							}
+						},
 						{
 							"name": "Append Variable1",
 							"type": "AppendVariable",
@@ -41,34 +77,48 @@
 							}
 						},
 						{
-							"name": "Get Metadata2",
-							"type": "GetMetadata",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "7.00:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
+							"name": "Set Variable2",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Get Metadata2",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"userProperties": [],
 							"typeProperties": {
-								"dataset": {
-									"referenceName": "DelimitedText2",
-									"type": "DatasetReference",
-									"parameters": {
-										"ContainerName": "@item().name"
-									}
+								"variableName": "var1",
+								"value": {
+									"value": "@variables('var2')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set Variable3",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set Variable2",
+									"dependencyConditions": [
+										"Succeeded"
+									]
 								},
-								"fieldList": [
-									"childItems"
-								],
-								"storeSettings": {
-									"type": "AzureBlobStorageReadSetting",
-									"recursive": true
-								},
-								"formatSettings": {
-									"type": "DelimitedTextReadSetting"
+								{
+									"activity": "Get Metadata2",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "var2",
+								"value": {
+									"value": "@string(union(activity('Get Metadata2').output.childitems,variables('var1')))",
+									"type": "Expression"
 								}
 							}
 						}
@@ -90,7 +140,10 @@
 				"typeProperties": {
 					"dataset": {
 						"referenceName": "DelimitedText1",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"ContainerName": " "
+						}
 					},
 					"fieldList": [
 						"childItems"
@@ -103,10 +156,70 @@
 						"type": "DelimitedTextReadSetting"
 					}
 				}
+			},
+			{
+				"name": "Set Variable1",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "finalVar",
+					"value": {
+						"value": "@union(createArray(variables('FileList')))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Web1",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://validatefileschema.azurewebsites.net/api/TrackFileLoadHttpTrigger?code=4y1aBVWDExyf2f0aTpjX2isYOQypfrcifnk8Drd5x52mtVgu9cP1ZQ==",
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "@variables('FileList')",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"variables": {
 			"FileList": {
+				"type": "Array"
+			},
+			"finalVar": {
+				"type": "String"
+			},
+			"var1": {
+				"type": "String"
+			},
+			"var2": {
 				"type": "String"
 			}
 		},
